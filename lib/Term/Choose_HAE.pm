@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose );
 
@@ -20,7 +20,7 @@ no warnings 'utf8';
 
 
 sub choose {
-    if ( ref $_[0] ne 'Term::Choose' ) {
+    if ( ref $_[0] ne 'Term::Choose_HAE' ) {
         return Term::Choose_HAE->new()->Term::Choose::__choose( @_ );
     }
     my $self = shift;
@@ -97,7 +97,7 @@ Term::Choose_HAE - Choose items from a list interactively.
 
 =head1 VERSION
 
-Version 0.002
+Version 0.003
 
 =cut
 
