@@ -33,7 +33,7 @@ WriteMakefile(
         'strict'                  => 0,
         'warnings'                => 0,
         'Exporter'                => 0,
-        'Term::Choose'            => '1.204',
+        'Term::Choose'            => '1.205',
         'Unicode::GCString'       => 0,
         'Text::ANSI::WideUtil'    => 0,
     },

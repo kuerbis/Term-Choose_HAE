@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.008003;
 
-our $VERSION = '0.004';
+our $VERSION = '0.005';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose );
 
@@ -63,8 +63,9 @@ sub __unicode_trim {
 }
 
 
-sub _print_columns {
-    ( my $str = $_[0] ) =~ s/\e\[[\d;]*m//msg;
+sub __print_columns {
+    #my $self = $_[0];
+    ( my $str = $_[1] ) =~ s/\e\[[\d;]*m//msg;
     Unicode::GCString->new( $str )->columns();
 }
 
@@ -85,7 +86,7 @@ Term::Choose_HAE - Choose items from a list interactively.
 
 =head1 VERSION
 
-Version 0.004
+Version 0.005
 
 =cut
 
