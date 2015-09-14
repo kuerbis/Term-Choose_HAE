@@ -36,6 +36,8 @@ WriteMakefile(
         'Term::Choose'            => '1.205',
         'Unicode::GCString'       => 0,
         'Text::ANSI::WideUtil'    => 0,
+        'Parse::ANSIColor::Tiny'  => 0,
+        'Term::ANSIColor'         => 0,
     },
     test  => {
         TESTS => 't/*/*.t',
