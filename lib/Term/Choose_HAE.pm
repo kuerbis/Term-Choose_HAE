@@ -4,12 +4,12 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.006';
+our $VERSION = '0.007';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose );
 
-use Unicode::GCString    qw();
 use Text::ANSI::WideUtil qw( ta_mbtrunc );
+use Unicode::GCString    qw();
 
 use parent 'Term::Choose';
 
@@ -65,8 +65,12 @@ sub __unicode_trim {
 
 sub __print_columns {
     #my $self = $_[0];
-    ( my $str = $_[1] ) =~ s/\e\[[\d;]*m//msg;
-    Unicode::GCString->new( $str )->columns();
+    Unicode::GCString->new( __strip_ansi_color( $_[1] ) )->columns();
+}
+
+sub __strip_ansi_color {
+    ( my $str = $_[0] ) =~ s/\e\[[\d;]*m//msg;
+    return $str;
 }
 
 
@@ -86,7 +90,7 @@ Term::Choose_HAE - Choose items from a list interactively.
 
 =head1 VERSION
 
-Version 0.006
+Version 0.007
 
 =cut
 
@@ -136,9 +140,9 @@ See L<Term::Choose> for usage and options.
 =head2 Occupied escape sequences
 
 Don't use the "inverse" escape sequence (C<\e[7m>) (or corresponding coloures) because C<choose> uses "inverse" to mark
-the cursor position and don't use the escape sequence "underline" (C<\e[7m>) because C<choose> in list context markes
-the selected items with the "underline" escape sequence. Also reset escapes (C<\e[0m>) should only be at the end of the
-strings.
+the cursor position and don't use the escape sequence "underline" (C<\e[7m>) because C<choose> in list context marks
+the selected items with the "underline" escape sequence. Also the "reset" escape sequence (C<\e[0m>) should only be at
+the end of the strings.
 
 =head1 REQUIREMENTS
 
