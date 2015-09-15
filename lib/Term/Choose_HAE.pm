@@ -4,12 +4,12 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.007';
+our $VERSION = '0.008';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose );
 
-use Text::ANSI::WideUtil qw( ta_mbtrunc );
 use Unicode::GCString    qw();
+use Text::ANSI::WideUtil qw( ta_mbtrunc );
 
 use parent 'Term::Choose';
 
@@ -90,7 +90,7 @@ Term::Choose_HAE - Choose items from a list interactively.
 
 =head1 VERSION
 
-Version 0.007
+Version 0.008
 
 =cut
 
