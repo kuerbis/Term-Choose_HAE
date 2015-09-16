@@ -4,14 +4,15 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.008';
+our $VERSION = '0.009';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose );
 
-use Unicode::GCString    qw();
-use Text::ANSI::WideUtil qw( ta_mbtrunc );
-use Parse::ANSIColor::Tiny;
-use Term::ANSIColor qw(colored);
+use Parse::ANSIColor::Tiny qw();
+use Term::ANSIColor        qw( colored );
+use Text::ANSI::WideUtil   qw( ta_mbtrunc );
+use Unicode::GCString      qw();
+
 use Term::Choose::Constants qw(:choose);
 
 use parent 'Term::Choose';
@@ -62,7 +63,7 @@ sub __copy_orig_list {
 sub __unicode_trim {
     my ( $self, $str, $len ) = @_;
     return '' if $len <= 0; #
-    return ta_mbtrunc( $str, $len - 1 ); # -1 ?
+    return ta_mbtrunc( $str, $len );
 }
 
 
@@ -79,36 +80,31 @@ sub __strip_ansi_color {
 
 sub __wr_cell {
     my( $self, $row, $col ) = @_;
-    my( $wrap, $str) = ("", "");
-    open TRAPSTDOUT, '>', \$wrap || die "can't open TRAPSTDOUT: $!";
+    my $is_cursor_pos = ( $row == $self->{pos}[ROW] && $col == $self->{pos}[COL] ) ? 1 : 0;
+    my $is_selected   = $self->{marked}[$row][$col] ? 1 : 0;
+    my( $wrap, $str ) = ( "", "" );
+    open TRAPSTDOUT, '>', \$wrap or die "can't open TRAPSTDOUT: $!";
     if ( $#{$self->{rc2idx}} == 0 ) {
         my $lngth = 0;
         if ( $col > 0 ) {
             for my $cl ( 0 .. $col - 1 ) {
-                my $gcs_element = Unicode::GCString->new(
-                    __strip_ansi_color(
-                        $self->{list}[ $self->{rc2idx}[$row][$cl] ]
-                    )
-                );
-                $lngth += $gcs_element->columns();
+                $lngth += $self->__print_columns( $self->{list}[ $self->{rc2idx}[$row][$cl] ] );
                 $lngth += $self->{pad_one_row};
             }
         }
         $self->__goto( $row - $self->{row_on_top}, $lngth );
         select TRAPSTDOUT;
-        $self->{plugin}->__bold_underline() if $self->{marked}[$row][$col];
-        $self->{plugin}->__reverse()        if $row == $self->{pos}[ROW] && $col == $self->{pos}[COL];
+        $self->{plugin}->__bold_underline() if $is_selected;
+        $self->{plugin}->__reverse()        if $is_cursor_pos;
         select STDOUT;
         $str = $self->{list}[$self->{rc2idx}[$row][$col]];
-        my $gcs_element = Unicode::GCString->new(
-            __strip_ansi_color($self->{list}[ $self->{rc2idx}[$row][$col] ]));
-        $self->{i_col} += $gcs_element->columns();
+        $self->{i_col} += $self->__print_columns( $self->{list}[ $self->{rc2idx}[$row][$col] ] );
     }
     else {
         $self->__goto( $row - $self->{row_on_top}, $col * $self->{col_width} );
         select TRAPSTDOUT;
-        $self->{plugin}->__bold_underline() if $self->{marked}[$row][$col];
-        $self->{plugin}->__reverse()        if $row == $self->{pos}[ROW] && $col == $self->{pos}[COL];
+        $self->{plugin}->__bold_underline() if $is_selected;
+        $self->{plugin}->__reverse()        if $is_cursor_pos;
         select STDOUT;
         $str = $self->__unicode_sprintf( $self->{rc2idx}[$row][$col] );
         $self->{i_col} += $self->{length_longest};
@@ -117,19 +113,40 @@ sub __wr_cell {
     close TRAPSTDOUT;
 
     my $ansi   = Parse::ANSIColor::Tiny->new();
-    my @codes  = ($wrap =~ m{ \e\[ ([\d;]*) m }xg);
-    my @attr   = $ansi->identify(@codes ? @codes : "");
-    my $marked = $ansi->parse($str);
-    if ($attr[0] ne "clear") {
-        foreach my $ele (@$marked) {
-            $ele->[0] = [ $ansi->normalize(@{ $ele->[0] }, @attr) ];
+    my @codes  = ( $wrap =~ m{ \e\[ ([\d;]*) m }xg );
+    my @attr   = $ansi->identify( @codes ? @codes : "" );
+    my $marked = $ansi->parse( $str );
+    #if ($attr[0] ne "clear") {
+    #    foreach my $ele (@$marked) {
+    #        $ele->[0] = [ $ansi->normalize(@{ $ele->[0] }, @attr) ];
+    #    }
+    #}
+    if ( $self->{length_longest} > $self->{avail_width} ) { # $self->{cut}
+        for my $i ( 0 .. $#$marked ) {
+            if ( $i == $#$marked && @$marked > 1 && ! @{$marked->[$i][0]} && $marked->[$i][1] =~ /^\.\.\.\z/ ) {
+                $marked->[$i][0] = $marked->[$i-1][0];
+            }
         }
     }
-    print join("",
-        map { @{ $_->[0] } ? Term::ANSIColor::colored(@$_) : $_->[1] }
-          @$marked);
-
-    $self->{plugin}->__reset() if $self->{marked}[$row][$col] || $row == $self->{pos}[ROW] && $col == $self->{pos}[COL];
+    if ( $attr[0] ne 'clear' ) {
+        for my $i ( 0 .. $#$marked ) {
+            if ( @$marked > 1 && ! @{$marked->[$i][0]} ) {
+                if ( $i == 0         && ( $self->{justify} == 1 || $self->{justify} == 2 ) && $marked->[$i][1] =~ /^\s*\z/ ) {
+                    next;
+                    #$marked->[$i][0] = $marked->[$i+1][0];
+                }
+                if ( $i == $#$marked && ( $self->{justify} == 0 || $self->{justify} == 2 ) && $marked->[$i][1] =~ /^\s*\z/ ) {
+                    next;
+                    #$marked->[$i][0] = $marked->[$i-1][0];
+                }
+            }
+            $marked->[$i][0] = [ $ansi->normalize( @{ $marked->[$i][0] }, @attr ) ];
+        }
+    }
+    print join "", map { @{$_->[0]} ? colored( @$_ ) : $_->[1] } @$marked;
+    if ( $is_selected || $is_cursor_pos ) {
+        $self->{plugin}->__reset();
+    }
 }
 
 
@@ -148,7 +165,7 @@ Term::Choose_HAE - Choose items from a list interactively.
 
 =head1 VERSION
 
-Version 0.008
+Version 0.009
 
 =cut
 
@@ -191,16 +208,14 @@ Object-oriented interface:
 Choose interactively from a list of items.
 
 C<Term::Choose_HAE> works like C<Term::Choose> except that the method/subroutine C<choose> from C<Term::Choose_HAE> does
-not disable ANSI escape sequences; so with C<Term::Choose_HAE> it is possible to output coloured text.
+not disable ANSI escape sequences; so with C<Term::Choose_HAE> it is possible to output colored text.
 
 See L<Term::Choose> for usage and options.
 
 =head2 Occupied escape sequences
 
-Don't use the "inverse" escape sequence (C<\e[7m>) (or corresponding coloures) because C<choose> uses "inverse" to mark
-the cursor position and don't use the escape sequence "underline" (C<\e[7m>) because C<choose> in list context marks
-the selected items with the "underline" escape sequence. Also the "reset" escape sequence (C<\e[0m>) should only be at
-the end of the strings.
+C<choose> uses the "inverse" escape sequence (C<\e[7m>) to mark the cursor position and the "underline" escape sequence (C<\e[7m>) to mark
+the selected items in list context.
 
 =head1 REQUIREMENTS
 
