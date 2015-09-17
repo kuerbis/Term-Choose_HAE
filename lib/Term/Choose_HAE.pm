@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.009';
+our $VERSION = '0.010';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose );
 
@@ -19,6 +19,12 @@ use parent 'Term::Choose';
 
 no warnings 'utf8';
 
+
+sub __valid_options {
+    my $valid = Term::Choose::__valid_options();
+    $valid->{fill_up} = '[ 0 1 ]';
+    return $valid;
+};
 
 
 sub choose {
@@ -80,10 +86,10 @@ sub __strip_ansi_color {
 
 sub __wr_cell {
     my( $self, $row, $col ) = @_;
-    my $is_cursor_pos = ( $row == $self->{pos}[ROW] && $col == $self->{pos}[COL] ) ? 1 : 0;
-    my $is_selected   = $self->{marked}[$row][$col] ? 1 : 0;
-    my( $wrap, $str ) = ( "", "" );
-    open TRAPSTDOUT, '>', \$wrap or die "can't open TRAPSTDOUT: $!";
+    my $cell_is_cursor_pos = ( $row == $self->{pos}[ROW] && $col == $self->{pos}[COL] ) ? 1 : 0;
+    my $cell_is_selected   = $self->{marked}[$row][$col] ? 1 : 0;
+    my( $wrap, $str ) = ( '', '' );
+    open my $TRAPSTDOUT, '>', \$wrap or die "can't open TRAPSTDOUT: $!";
     if ( $#{$self->{rc2idx}} == 0 ) {
         my $lngth = 0;
         if ( $col > 0 ) {
@@ -93,34 +99,29 @@ sub __wr_cell {
             }
         }
         $self->__goto( $row - $self->{row_on_top}, $lngth );
-        select TRAPSTDOUT;
-        $self->{plugin}->__bold_underline() if $is_selected;
-        $self->{plugin}->__reverse()        if $is_cursor_pos;
+        select $TRAPSTDOUT;
+        $self->{plugin}->__bold_underline() if $cell_is_selected;
+        $self->{plugin}->__reverse()        if $cell_is_cursor_pos;
         select STDOUT;
         $str = $self->{list}[$self->{rc2idx}[$row][$col]];
         $self->{i_col} += $self->__print_columns( $self->{list}[ $self->{rc2idx}[$row][$col] ] );
     }
     else {
         $self->__goto( $row - $self->{row_on_top}, $col * $self->{col_width} );
-        select TRAPSTDOUT;
-        $self->{plugin}->__bold_underline() if $is_selected;
-        $self->{plugin}->__reverse()        if $is_cursor_pos;
+        select $TRAPSTDOUT;
+        $self->{plugin}->__bold_underline() if $cell_is_selected;
+        $self->{plugin}->__reverse()        if $cell_is_cursor_pos;
         select STDOUT;
         $str = $self->__unicode_sprintf( $self->{rc2idx}[$row][$col] );
         $self->{i_col} += $self->{length_longest};
     }
     select STDOUT;
-    close TRAPSTDOUT;
+    close $TRAPSTDOUT;
 
     my $ansi   = Parse::ANSIColor::Tiny->new();
     my @codes  = ( $wrap =~ m{ \e\[ ([\d;]*) m }xg );
-    my @attr   = $ansi->identify( @codes ? @codes : "" );
+    my @attr   = $ansi->identify( @codes ? @codes : '' );
     my $marked = $ansi->parse( $str );
-    #if ($attr[0] ne "clear") {
-    #    foreach my $ele (@$marked) {
-    #        $ele->[0] = [ $ansi->normalize(@{ $ele->[0] }, @attr) ];
-    #    }
-    #}
     if ( $self->{length_longest} > $self->{avail_width} ) { # $self->{cut}
         for my $i ( 0 .. $#$marked ) {
             if ( $i == $#$marked && @$marked > 1 && ! @{$marked->[$i][0]} && $marked->[$i][1] =~ /^\.\.\.\z/ ) {
@@ -132,19 +133,23 @@ sub __wr_cell {
         for my $i ( 0 .. $#$marked ) {
             if ( @$marked > 1 && ! @{$marked->[$i][0]} ) {
                 if ( $i == 0         && ( $self->{justify} == 1 || $self->{justify} == 2 ) && $marked->[$i][1] =~ /^\s*\z/ ) {
-                    next;
-                    #$marked->[$i][0] = $marked->[$i+1][0];
+                    if ( ! $self->{fill_up} ) {
+                        next;
+                    }
+                    $marked->[$i][0] = $marked->[$i+1][0];
                 }
                 if ( $i == $#$marked && ( $self->{justify} == 0 || $self->{justify} == 2 ) && $marked->[$i][1] =~ /^\s*\z/ ) {
-                    next;
-                    #$marked->[$i][0] = $marked->[$i-1][0];
+                    if ( ! $self->{fill_up} ) {
+                        next;
+                    }
+                    $marked->[$i][0] = $marked->[$i-1][0];
                 }
             }
             $marked->[$i][0] = [ $ansi->normalize( @{ $marked->[$i][0] }, @attr ) ];
         }
     }
-    print join "", map { @{$_->[0]} ? colored( @$_ ) : $_->[1] } @$marked;
-    if ( $is_selected || $is_cursor_pos ) {
+    print join '', map { @{$_->[0]} ? colored( @$_ ) : $_->[1] } @$marked;
+    if ( $cell_is_selected || $cell_is_cursor_pos ) {
         $self->{plugin}->__reset();
     }
 }
@@ -165,7 +170,7 @@ Term::Choose_HAE - Choose items from a list interactively.
 
 =head1 VERSION
 
-Version 0.009
+Version 0.010
 
 =cut
 
@@ -207,17 +212,39 @@ Object-oriented interface:
 
 Choose interactively from a list of items.
 
-C<Term::Choose_HAE> works like C<Term::Choose> except that the method/subroutine C<choose> from C<Term::Choose_HAE> does
+C<Term::Choose_HAE> works like C<Term::Choose> except that C<choose> from C<Term::Choose_HAE> does
 not disable ANSI escape sequences; so with C<Term::Choose_HAE> it is possible to output colored text.
 
-See L<Term::Choose> for usage and options.
+C<Term::Choose_HAE> provides one additional option: I<fill_up>.
+
+Else see L<Term::Choose> for usage and options.
 
 =head2 Occupied escape sequences
 
-C<choose> uses the "inverse" escape sequence (C<\e[7m>) to mark the cursor position and the "underline" escape sequence (C<\e[7m>) to mark
+C<choose> uses the "inverse" escape sequence (C<\e[7m>) to mark the cursor position and the "underline" escape sequence
+(C<\e[7m>) to mark
 the selected items in list context.
 
+=head1 OPTIONS
+
+C<Term::Choose_HAE> provides one additional option to the options which are available with
+L<Term::Choose|Term::Choose/OPTIONS>:
+
+=head2 fill_up
+
+0 - off (default)
+
+1 - on
+
+If I<fill_up> is enabled, the highlighting of the cursor position and in list context the highlighting of the selected
+items has always the width of the column. If I<fill_up> is disabled, the highlighting has the width of the highlighted
+item.
+
 =head1 REQUIREMENTS
+
+The requirements are the same as with C<Term::Choose> except that the minimum Perl version for C<Term::Choose_HAE>
+is 5.10.1
+instead of 5.8.3.
 
 =head2 Perl version
 
