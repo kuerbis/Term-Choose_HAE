@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.012';
+our $VERSION = '0.013';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose );
 
@@ -125,7 +125,7 @@ sub __wr_cell {
     my @attr   = $ansi->identify( @codes ? @codes : '' );
     my $marked = $ansi->parse( $str );
     if ( ( $self->{length}[$idx] // $self->{length_longest} ) > $self->{avail_width} ) {
-        if ( @$marked > 1 && ! @{$marked->[-1][0]} ) { # && $marked->[-1][1] =~ /^\.\.\.\z/ ) {
+        if ( @$marked > 1 && ! @{$marked->[-1][0]} && $marked->[-1][1] =~ /^\.\.\.\z/ ) {
             $marked->[-1][0] = $marked->[-2][0];
         }
     }
@@ -166,7 +166,7 @@ Term::Choose_HAE - Choose items from a list interactively.
 
 =head1 VERSION
 
-Version 0.012
+Version 0.013
 
 =cut
 
