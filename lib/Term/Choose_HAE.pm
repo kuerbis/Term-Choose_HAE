@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.010';
+our $VERSION = '0.011';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose );
 
@@ -68,7 +68,6 @@ sub __copy_orig_list {
 
 sub __unicode_trim {
     my ( $self, $str, $len ) = @_;
-    return '' if $len <= 0; #
     return ta_mbtrunc( $str, $len );
 }
 
@@ -88,6 +87,7 @@ sub __wr_cell {
     my( $self, $row, $col ) = @_;
     my $cell_is_cursor_pos = ( $row == $self->{pos}[ROW] && $col == $self->{pos}[COL] ) ? 1 : 0;
     my $cell_is_selected   = $self->{marked}[$row][$col] ? 1 : 0;
+    my $idx = $self->{rc2idx}[$row][$col];
     my( $wrap, $str ) = ( '', '' );
     open my $TRAPSTDOUT, '>', \$wrap or die "can't open TRAPSTDOUT: $!";
     if ( $#{$self->{rc2idx}} == 0 ) {
@@ -103,8 +103,8 @@ sub __wr_cell {
         $self->{plugin}->__bold_underline() if $cell_is_selected;
         $self->{plugin}->__reverse()        if $cell_is_cursor_pos;
         select STDOUT;
-        $str = $self->{list}[$self->{rc2idx}[$row][$col]];
-        $self->{i_col} += $self->__print_columns( $self->{list}[ $self->{rc2idx}[$row][$col] ] );
+        $str = $self->{list}[$idx];
+        $self->{i_col} += $self->__print_columns( $self->{list}[$idx] );
     }
     else {
         $self->__goto( $row - $self->{row_on_top}, $col * $self->{col_width} );
@@ -112,7 +112,7 @@ sub __wr_cell {
         $self->{plugin}->__bold_underline() if $cell_is_selected;
         $self->{plugin}->__reverse()        if $cell_is_cursor_pos;
         select STDOUT;
-        $str = $self->__unicode_sprintf( $self->{rc2idx}[$row][$col] );
+        $str = $self->__unicode_sprintf( $idx );
         $self->{i_col} += $self->{length_longest};
     }
     select STDOUT;
@@ -122,11 +122,9 @@ sub __wr_cell {
     my @codes  = ( $wrap =~ m{ \e\[ ([\d;]*) m }xg );
     my @attr   = $ansi->identify( @codes ? @codes : '' );
     my $marked = $ansi->parse( $str );
-    if ( $self->{length_longest} > $self->{avail_width} ) { # $self->{cut}
-        for my $i ( 0 .. $#$marked ) {
-            if ( $i == $#$marked && @$marked > 1 && ! @{$marked->[$i][0]} && $marked->[$i][1] =~ /^\.\.\.\z/ ) {
-                $marked->[$i][0] = $marked->[$i-1][0];
-            }
+    if ( ( $self->{length}[$idx] // $self->{length_longest} ) > $self->{avail_width} ) {
+        if ( @$marked > 1 && ! @{$marked->[-1][0]} && $marked->[-1][1] =~ /^\.\.\.\z/ ) {
+            $marked->[-1][0] = $marked->[-2][0];
         }
     }
     if ( $attr[0] ne 'clear' ) {
@@ -170,7 +168,7 @@ Term::Choose_HAE - Choose items from a list interactively.
 
 =head1 VERSION
 
-Version 0.010
+Version 0.011
 
 =cut
 
