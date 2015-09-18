@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.011';
+our $VERSION = '0.012';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose );
 
@@ -85,16 +85,18 @@ sub __strip_ansi_color {
 
 sub __wr_cell {
     my( $self, $row, $col ) = @_;
+    my $idx                = $self->{rc2idx}[$row][$col];
     my $cell_is_cursor_pos = ( $row == $self->{pos}[ROW] && $col == $self->{pos}[COL] ) ? 1 : 0;
     my $cell_is_selected   = $self->{marked}[$row][$col] ? 1 : 0;
-    my $idx = $self->{rc2idx}[$row][$col];
+
     my( $wrap, $str ) = ( '', '' );
     open my $TRAPSTDOUT, '>', \$wrap or die "can't open TRAPSTDOUT: $!";
     if ( $#{$self->{rc2idx}} == 0 ) {
         my $lngth = 0;
         if ( $col > 0 ) {
             for my $cl ( 0 .. $col - 1 ) {
-                $lngth += $self->__print_columns( $self->{list}[ $self->{rc2idx}[$row][$cl] ] );
+                my $idx = $self->{rc2idx}[$row][$cl];
+                $lngth += $self->__print_columns( $self->{list}[$idx] );
                 $lngth += $self->{pad_one_row};
             }
         }
@@ -123,23 +125,19 @@ sub __wr_cell {
     my @attr   = $ansi->identify( @codes ? @codes : '' );
     my $marked = $ansi->parse( $str );
     if ( ( $self->{length}[$idx] // $self->{length_longest} ) > $self->{avail_width} ) {
-        if ( @$marked > 1 && ! @{$marked->[-1][0]} && $marked->[-1][1] =~ /^\.\.\.\z/ ) {
+        if ( @$marked > 1 && ! @{$marked->[-1][0]} ) { # && $marked->[-1][1] =~ /^\.\.\.\z/ ) {
             $marked->[-1][0] = $marked->[-2][0];
         }
     }
     if ( $attr[0] ne 'clear' ) {
         for my $i ( 0 .. $#$marked ) {
             if ( @$marked > 1 && ! @{$marked->[$i][0]} ) {
-                if ( $i == 0         && ( $self->{justify} == 1 || $self->{justify} == 2 ) && $marked->[$i][1] =~ /^\s*\z/ ) {
-                    if ( ! $self->{fill_up} ) {
-                        next;
-                    }
+                if ( $i == 0         && $self->{justify} != 0 && $marked->[$i][1] !~ /\S/ ) {
+                    next if ! $self->{fill_up};
                     $marked->[$i][0] = $marked->[$i+1][0];
                 }
-                if ( $i == $#$marked && ( $self->{justify} == 0 || $self->{justify} == 2 ) && $marked->[$i][1] =~ /^\s*\z/ ) {
-                    if ( ! $self->{fill_up} ) {
-                        next;
-                    }
+                if ( $i == $#$marked && $self->{justify} != 1 && $marked->[$i][1] !~ /\S/ ) {
+                    next if ! $self->{fill_up};
                     $marked->[$i][0] = $marked->[$i-1][0];
                 }
             }
@@ -168,7 +166,7 @@ Term::Choose_HAE - Choose items from a list interactively.
 
 =head1 VERSION
 
-Version 0.011
+Version 0.012
 
 =cut
 
