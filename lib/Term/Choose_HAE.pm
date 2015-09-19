@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.013';
+our $VERSION = '0.014';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose );
 
@@ -85,46 +85,46 @@ sub __strip_ansi_color {
 
 sub __wr_cell {
     my( $self, $row, $col ) = @_;
-    my $idx                = $self->{rc2idx}[$row][$col];
-    my $cell_is_cursor_pos = ( $row == $self->{pos}[ROW] && $col == $self->{pos}[COL] ) ? 1 : 0;
-    my $cell_is_selected   = $self->{marked}[$row][$col] ? 1 : 0;
+    my $idx        = $self->{rc2idx}[$row][$col];
+    my $is_cursor_pos = $row == $self->{pos}[ROW] && $col == $self->{pos}[COL];
+    my $is_selected   = $self->{marked}[$row][$col];
 
     my( $wrap, $str ) = ( '', '' );
-    open my $TRAPSTDOUT, '>', \$wrap or die "can't open TRAPSTDOUT: $!";
+    open my $trapstdout, '>', \$wrap or die "can't open TRAPSTDOUT: $!";
     if ( $#{$self->{rc2idx}} == 0 ) {
         my $lngth = 0;
         if ( $col > 0 ) {
             for my $cl ( 0 .. $col - 1 ) {
-                my $idx = $self->{rc2idx}[$row][$cl];
-                $lngth += $self->__print_columns( $self->{list}[$idx] );
+                my $i = $self->{rc2idx}[$row][$cl];
+                $lngth += $self->__print_columns( $self->{list}[$i] );
                 $lngth += $self->{pad_one_row};
             }
         }
         $self->__goto( $row - $self->{row_on_top}, $lngth );
-        select $TRAPSTDOUT;
-        $self->{plugin}->__bold_underline() if $cell_is_selected;
-        $self->{plugin}->__reverse()        if $cell_is_cursor_pos;
+        select $trapstdout;
+        $self->{plugin}->__bold_underline() if $is_selected;
+        $self->{plugin}->__reverse()        if $is_cursor_pos;
         select STDOUT;
         $str = $self->{list}[$idx];
         $self->{i_col} += $self->__print_columns( $self->{list}[$idx] );
     }
     else {
         $self->__goto( $row - $self->{row_on_top}, $col * $self->{col_width} );
-        select $TRAPSTDOUT;
-        $self->{plugin}->__bold_underline() if $cell_is_selected;
-        $self->{plugin}->__reverse()        if $cell_is_cursor_pos;
+        select $trapstdout;
+        $self->{plugin}->__bold_underline() if $is_selected;
+        $self->{plugin}->__reverse()        if $is_cursor_pos;
         select STDOUT;
         $str = $self->__unicode_sprintf( $idx );
         $self->{i_col} += $self->{length_longest};
     }
     select STDOUT;
-    close $TRAPSTDOUT;
+    close $trapstdout;
 
     my $ansi   = Parse::ANSIColor::Tiny->new();
-    my @codes  = ( $wrap =~ m{ \e\[ ([\d;]*) m }xg );
+    my @codes  = ( $wrap =~ /\e\[([\d;]*)m/g );
     my @attr   = $ansi->identify( @codes ? @codes : '' );
     my $marked = $ansi->parse( $str );
-    if ( ( $self->{length}[$idx] // $self->{length_longest} ) > $self->{avail_width} ) {
+    if ( $self->{length}[$idx] > $self->{avail_width} ) {
         if ( @$marked > 1 && ! @{$marked->[-1][0]} && $marked->[-1][1] =~ /^\.\.\.\z/ ) {
             $marked->[-1][0] = $marked->[-2][0];
         }
@@ -132,11 +132,11 @@ sub __wr_cell {
     if ( $attr[0] ne 'clear' ) {
         for my $i ( 0 .. $#$marked ) {
             if ( @$marked > 1 && ! @{$marked->[$i][0]} ) {
-                if ( $i == 0         && $self->{justify} != 0 && $marked->[$i][1] !~ /\S/ ) {
+                if ( $i == 0         && $self->{justify} != 0 && $marked->[$i][1] =~ /^\s*\z/ ) {
                     next if ! $self->{fill_up};
                     $marked->[$i][0] = $marked->[$i+1][0];
                 }
-                if ( $i == $#$marked && $self->{justify} != 1 && $marked->[$i][1] !~ /\S/ ) {
+                if ( $i == $#$marked && $self->{justify} != 1 && $marked->[$i][1] =~ /^\s*\z/ ) {
                     next if ! $self->{fill_up};
                     $marked->[$i][0] = $marked->[$i-1][0];
                 }
@@ -145,7 +145,7 @@ sub __wr_cell {
         }
     }
     print join '', map { @{$_->[0]} ? colored( @$_ ) : $_->[1] } @$marked;
-    if ( $cell_is_selected || $cell_is_cursor_pos ) {
+    if ( $is_selected || $is_cursor_pos ) {
         $self->{plugin}->__reset();
     }
 }
@@ -166,7 +166,7 @@ Term::Choose_HAE - Choose items from a list interactively.
 
 =head1 VERSION
 
-Version 0.013
+Version 0.014
 
 =cut
 

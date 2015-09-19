@@ -19,9 +19,7 @@ xt/get_key_linux.pl
 xt/manifest.t
 xt/perl_minimum_version.t
 xt/perlcriticrc
-xt/pod-coverage.t
 xt/pod.t
-xt/pod_defaults.t
 xt/prereqs.t
 xt/spelling.t
 xt/synopsis.t
