@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.014';
+our $VERSION = '0.015';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose );
 
@@ -13,7 +13,9 @@ use Term::ANSIColor        qw( colored );
 use Text::ANSI::WideUtil   qw( ta_mbtrunc );
 use Unicode::GCString      qw();
 
-use Term::Choose::Constants qw(:choose);
+use if $^O eq 'MSWin32', 'Win32::Console::ANSI';
+
+use Term::Choose::Constants qw( :choose :linux );
 
 use parent 'Term::Choose';
 
@@ -85,10 +87,8 @@ sub __strip_ansi_color {
 
 sub __wr_cell {
     my( $self, $row, $col ) = @_;
-    my $idx        = $self->{rc2idx}[$row][$col];
     my $is_cursor_pos = $row == $self->{pos}[ROW] && $col == $self->{pos}[COL];
-    my $is_selected   = $self->{marked}[$row][$col];
-
+    my $idx = $self->{rc2idx}[$row][$col];
     my( $wrap, $str ) = ( '', '' );
     open my $trapstdout, '>', \$wrap or die "can't open TRAPSTDOUT: $!";
     if ( $#{$self->{rc2idx}} == 0 ) {
@@ -102,8 +102,8 @@ sub __wr_cell {
         }
         $self->__goto( $row - $self->{row_on_top}, $lngth );
         select $trapstdout;
-        $self->{plugin}->__bold_underline() if $is_selected;
-        $self->{plugin}->__reverse()        if $is_cursor_pos;
+        print BOLD_UNDERLINE if $self->{marked}[$row][$col];    # use escape sequence for Win32 too
+        print REVERSE        if $is_cursor_pos;                 # else i can't see highlighted items with Win32::Console::ANSI in use
         select STDOUT;
         $str = $self->{list}[$idx];
         $self->{i_col} += $self->__print_columns( $self->{list}[$idx] );
@@ -111,8 +111,8 @@ sub __wr_cell {
     else {
         $self->__goto( $row - $self->{row_on_top}, $col * $self->{col_width} );
         select $trapstdout;
-        $self->{plugin}->__bold_underline() if $is_selected;
-        $self->{plugin}->__reverse()        if $is_cursor_pos;
+        print BOLD_UNDERLINE if $self->{marked}[$row][$col];
+        print REVERSE        if $is_cursor_pos;
         select STDOUT;
         $str = $self->__unicode_sprintf( $idx );
         $self->{i_col} += $self->{length_longest};
@@ -145,8 +145,8 @@ sub __wr_cell {
         }
     }
     print join '', map { @{$_->[0]} ? colored( @$_ ) : $_->[1] } @$marked;
-    if ( $is_selected || $is_cursor_pos ) {
-        $self->{plugin}->__reset();
+    if ( $self->{marked}[$row][$col] || $is_cursor_pos ) {
+        print RESET;
     }
 }
 
@@ -166,7 +166,7 @@ Term::Choose_HAE - Choose items from a list interactively.
 
 =head1 VERSION
 
-Version 0.014
+Version 0.015
 
 =cut
 

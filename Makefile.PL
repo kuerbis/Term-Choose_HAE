@@ -3,6 +3,13 @@ use warnings;
 use strict;
 use ExtUtils::MakeMaker;
 
+my %prereqs_os_specific;
+if ( $^O eq 'MSWin32' ) {
+    %prereqs_os_specific = (
+        'Win32::Console::ANSI' => 0,
+    );
+}
+
 
 WriteMakefile(
     PL_FILES         => {},
@@ -35,10 +42,11 @@ WriteMakefile(
         'Exporter'                => 0,
         'Parse::ANSIColor::Tiny'  => 0,
         'Term::ANSIColor'         => 0,
-        'Term::Choose'            => '1.205_02',
+        'Term::Choose'            => '1.205_03',
         'Term::Choose::Constants' => 0,
         'Text::ANSI::WideUtil'    => 0,
         'Unicode::GCString'       => 0,
+        %prereqs_os_specific
     },
     test  => {
         TESTS => 't/*/*.t',
