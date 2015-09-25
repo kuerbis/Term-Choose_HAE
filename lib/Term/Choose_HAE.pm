@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.015';
+our $VERSION = '0.016';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose );
 
@@ -130,15 +130,32 @@ sub __wr_cell {
         }
     }
     if ( $attr[0] ne 'clear' ) {
+        if ( $self->{fill_up} && @$marked > 1 ) {
+            if ( ! @{$marked->[0][0]} && $self->{justify} != 0 && $marked->[0][1] =~ /^\s+\z/ ) {
+                $marked->[0][0] = $marked->[1][0];
+            }
+            if ( ! @{$marked->[-1][0]} && $self->{justify} != 1 && $marked->[-1][1] =~ /^\s+\z/ ) {
+                $marked->[-1][0] = $marked->[-2][0];
+            }
+        }
+        if ( ! $self->{fill_up} ) {
+            if ( ! @{$marked->[0][0]} && $marked->[0][1] =~ /^(\s+)\S/ ) {
+                my $tmp = $1;
+                $marked->[0][1] =~ s/^\s+//;
+                unshift @$marked, [ [], $tmp ];
+            }
+            elsif ( ! @{$marked->[-1][0]} && $marked->[-1][1] =~ /\S(\s+)\z/ ) {
+                my $tmp = $1;
+                $marked->[-1][1] =~ s/\s+\z//;
+                push @$marked, [ [], $tmp ];
+            }
+        }
         for my $i ( 0 .. $#$marked ) {
-            if ( @$marked > 1 && ! @{$marked->[$i][0]} ) {
-                if ( $i == 0         && $self->{justify} != 0 && $marked->[$i][1] =~ /^\s*\z/ ) {
-                    next if ! $self->{fill_up};
-                    $marked->[$i][0] = $marked->[$i+1][0];
-                }
-                if ( $i == $#$marked && $self->{justify} != 1 && $marked->[$i][1] =~ /^\s*\z/ ) {
-                    next if ! $self->{fill_up};
-                    $marked->[$i][0] = $marked->[$i-1][0];
+            if ( ! $self->{fill_up} ) {
+                if ( $i == 0 || $i == $#$marked ) {
+                    if ( ! @{$marked->[$i][0]} && $marked->[$i][1] =~ /^\s+\z/ ) {
+                        next;
+                    }
                 }
             }
             $marked->[$i][0] = [ $ansi->normalize( @{ $marked->[$i][0] }, @attr ) ];
@@ -166,7 +183,7 @@ Term::Choose_HAE - Choose items from a list interactively.
 
 =head1 VERSION
 
-Version 0.015
+Version 0.016
 
 =cut
 
