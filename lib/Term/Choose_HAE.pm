@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.016';
+our $VERSION = '0.017';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose );
 
@@ -22,11 +22,20 @@ use parent 'Term::Choose';
 no warnings 'utf8';
 
 
+
 sub __valid_options {
     my $valid = Term::Choose::__valid_options();
-    $valid->{fill_up} = '[ 0 1 ]';
+    $valid->{fill_up} = '[ 0 1 2 ]';
     return $valid;
 };
+
+
+sub __defaults {
+    my ( $self ) = @_;
+    my $defaults = Term::Choose::__defaults();
+    $defaults->{fill_up} = 1;
+    return $defaults;
+}
 
 
 sub choose {
@@ -124,17 +133,17 @@ sub __wr_cell {
     my @codes  = ( $wrap =~ /\e\[([\d;]*)m/g );
     my @attr   = $ansi->identify( @codes ? @codes : '' );
     my $marked = $ansi->parse( $str );
-    if ( $self->{length}[$idx] > $self->{avail_width} ) {
+    if ( $self->{length}[$idx] > $self->{avail_width} && $self->{fill_up} != 2 ) {
         if ( @$marked > 1 && ! @{$marked->[-1][0]} && $marked->[-1][1] =~ /^\.\.\.\z/ ) {
             $marked->[-1][0] = $marked->[-2][0];
         }
     }
     if ( $attr[0] ne 'clear' ) {
-        if ( $self->{fill_up} && @$marked > 1 ) {
-            if ( ! @{$marked->[0][0]} && $self->{justify} != 0 && $marked->[0][1] =~ /^\s+\z/ ) {
+        if ( $self->{fill_up} == 1 && @$marked > 1 ) {
+            if ( ! @{$marked->[0][0]} && $marked->[0][1] =~ /^\s+\z/ ) { #  && $self->{justify} != 0
                 $marked->[0][0] = $marked->[1][0];
             }
-            if ( ! @{$marked->[-1][0]} && $self->{justify} != 1 && $marked->[-1][1] =~ /^\s+\z/ ) {
+            if ( ! @{$marked->[-1][0]}&& $marked->[-1][1] =~ /^\s+\z/ ) { # && $self->{justify} != 1
                 $marked->[-1][0] = $marked->[-2][0];
             }
         }
@@ -183,7 +192,7 @@ Term::Choose_HAE - Choose items from a list interactively.
 
 =head1 VERSION
 
-Version 0.016
+Version 0.017
 
 =cut
 
@@ -225,39 +234,45 @@ Object-oriented interface:
 
 Choose interactively from a list of items.
 
-C<Term::Choose_HAE> works like C<Term::Choose> except that C<choose> from C<Term::Choose_HAE> does
-not disable ANSI escape sequences; so with C<Term::Choose_HAE> it is possible to output colored text.
-
-C<Term::Choose_HAE> provides one additional option: I<fill_up>.
+C<Term::Choose_HAE> works like C<Term::Choose> except that C<choose> from C<Term::Choose_HAE> does not disable ANSI
+escape sequences; so with C<Term::Choose_HAE> it is possible to output colored text. On a MSWin32 OS
+L<Win32::Console::ANSI> is used to translate the ANSI escape sequences. C<Term::Choose_HAE> provides one additional
+option: I<fill_up>.
 
 Else see L<Term::Choose> for usage and options.
 
 =head2 Occupied escape sequences
 
-C<choose> uses the "inverse" escape sequence (C<\e[7m>) to mark the cursor position and the "underline" escape sequence
-(C<\e[7m>) to mark
-the selected items in list context.
+C<choose> uses the "inverse" escape sequence to mark the cursor position and the "underline" and "bold" escape sequences
+to mark the selected items in list context.
 
 =head1 OPTIONS
 
-C<Term::Choose_HAE> provides one additional option to the options which are available with
-L<Term::Choose|Term::Choose/OPTIONS>:
+C<Term::Choose_HAE> inherits the options from L<Term::Choose|Term::Choose/OPTIONS> and adds the option I<fill_up>:
 
 =head2 fill_up
 
-0 - off (default)
+0 - off
 
-1 - on
+1 - fill up selected items with the adjacent color. (default)
+
+2 - fill up selected items with the default color.
 
 If I<fill_up> is enabled, the highlighting of the cursor position and in list context the highlighting of the selected
-items has always the width of the column. If I<fill_up> is disabled, the highlighting has the width of the highlighted
-item.
+items has always the width of the column.
+
+If I<fill_up> is set to C<1>, the color of the highlighting of leading and trailings spaces is set to the color of
+the highlighting of the adjacent non-space character of the item if these spaces are not embedded in escape sequences.
+
+If I<fill_up> is set to C<2>, leading and trailings spaces are highlighted with the default color for highlighting if
+these spaces are not embedded in escape sequences.
+
+If I<fill_up> is disabled, leading and trailing spaces are not highlighted if the are not embedded in escape sequences.
 
 =head1 REQUIREMENTS
 
-The requirements are the same as with C<Term::Choose> except that the minimum Perl version for C<Term::Choose_HAE>
-is 5.10.1
-instead of 5.8.3.
+The requirements are the same as with C<Term::Choose> except that the minimum Perl version for C<Term::Choose_HAE> is
+5.10.1 instead of 5.8.3.
 
 =head2 Perl version
 
