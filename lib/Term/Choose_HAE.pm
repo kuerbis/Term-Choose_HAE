@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.017';
+our $VERSION = '0.018';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose );
 
@@ -96,7 +96,7 @@ sub __strip_ansi_color {
 
 sub __wr_cell {
     my( $self, $row, $col ) = @_;
-    my $is_cursor_pos = $row == $self->{pos}[ROW] && $col == $self->{pos}[COL];
+    my $is_current_pos = $row == $self->{pos}[ROW] && $col == $self->{pos}[COL];
     my $idx = $self->{rc2idx}[$row][$col];
     my( $wrap, $str ) = ( '', '' );
     open my $trapstdout, '>', \$wrap or die "can't open TRAPSTDOUT: $!";
@@ -111,8 +111,8 @@ sub __wr_cell {
         }
         $self->__goto( $row - $self->{row_on_top}, $lngth );
         select $trapstdout;
-        print BOLD_UNDERLINE if $self->{marked}[$row][$col];    # use escape sequence for Win32 too
-        print REVERSE        if $is_cursor_pos;                 # else i can't see highlighted items with Win32::Console::ANSI in use
+        print BOLD_UNDERLINE if $self->{marked}[$row][$col];    # use escape sequences for Win32 too and translate them with Win32::Console::ANSI
+        print REVERSE        if $is_current_pos;                # so Parse::ANSIColor::Tiny can take into account these highlightings
         select STDOUT;
         $str = $self->{list}[$idx];
         $self->{i_col} += $self->__print_columns( $self->{list}[$idx] );
@@ -121,7 +121,7 @@ sub __wr_cell {
         $self->__goto( $row - $self->{row_on_top}, $col * $self->{col_width} );
         select $trapstdout;
         print BOLD_UNDERLINE if $self->{marked}[$row][$col];
-        print REVERSE        if $is_cursor_pos;
+        print REVERSE        if $is_current_pos;
         select STDOUT;
         $str = $self->__unicode_sprintf( $idx );
         $self->{i_col} += $self->{length_longest};
@@ -140,10 +140,10 @@ sub __wr_cell {
     }
     if ( $attr[0] ne 'clear' ) {
         if ( $self->{fill_up} == 1 && @$marked > 1 ) {
-            if ( ! @{$marked->[0][0]} && $marked->[0][1] =~ /^\s+\z/ ) { #  && $self->{justify} != 0
+            if ( ! @{$marked->[0][0]} && $marked->[0][1] =~ /^\s+\z/ ) {
                 $marked->[0][0] = $marked->[1][0];
             }
-            if ( ! @{$marked->[-1][0]}&& $marked->[-1][1] =~ /^\s+\z/ ) { # && $self->{justify} != 1
+            if ( ! @{$marked->[-1][0]}&& $marked->[-1][1] =~ /^\s+\z/ ) {
                 $marked->[-1][0] = $marked->[-2][0];
             }
         }
@@ -171,7 +171,7 @@ sub __wr_cell {
         }
     }
     print join '', map { @{$_->[0]} ? colored( @$_ ) : $_->[1] } @$marked;
-    if ( $self->{marked}[$row][$col] || $is_cursor_pos ) {
+    if ( $self->{marked}[$row][$col] || $is_current_pos ) {
         print RESET;
     }
 }
@@ -192,7 +192,7 @@ Term::Choose_HAE - Choose items from a list interactively.
 
 =head1 VERSION
 
-Version 0.017
+Version 0.018
 
 =cut
 
@@ -201,8 +201,13 @@ Version 0.017
 Functional interface:
 
     use Term::Choose_HAE qw( choose );
+    use Term::ANSIColor;
 
-    my $array_ref = [ qw( one two three four five ) ];
+    my $array_ref = [
+        colored( 'red_string', 'red'),
+        colored( 'green_string', 'green'),
+        colored( 'blue_string', 'cyan'),
+    ];
 
     my $choice = choose( $array_ref );                            # single choice
     print "$choice\n";
@@ -215,8 +220,13 @@ Functional interface:
 Object-oriented interface:
 
     use Term::Choose_HAE;
+    use Term::ANSIColor;
 
-    my $array_ref = [ "\e[31mred\e[0m", "\e[32mgreen\e[0m", "\e[34mblue\e[0m" ];
+    my $array_ref = [
+        colored( 'red_string', 'red'),
+        colored( 'green_string', 'green'),
+        colored( 'blue_string', 'cyan'),
+    ];
 
     my $new = Term::Choose_HAE->new();
 
