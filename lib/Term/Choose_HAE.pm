@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.019';
+our $VERSION = '0.020';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose );
 
@@ -192,7 +192,7 @@ Term::Choose_HAE - Choose items from a list interactively.
 
 =head1 VERSION
 
-Version 0.019
+Version 0.020
 
 =cut
 
@@ -271,13 +271,21 @@ C<Term::Choose_HAE> inherits the options from L<Term::Choose|Term::Choose/OPTION
 If I<fill_up> is enabled, the highlighting of the cursor position and in list context the highlighting of the selected
 items has always the width of the column.
 
-If I<fill_up> is set to C<1>, the color of the highlighting of leading and trailings spaces is set to the color of
+=over
+
+=item
+
+I<fill_up> set to C<1>: the color of the highlighting of leading and trailings spaces is set to the color of
 the highlighting of the adjacent non-space character of the item if these spaces are not embedded in escape sequences.
 
-If I<fill_up> is set to C<2>, leading and trailings spaces are highlighted with the default color for highlighting if
+=item
+
+I<fill_up> set to C<2>: leading and trailings spaces are highlighted with the default color for highlighting if
 these spaces are not embedded in escape sequences.
 
-If I<fill_up> is disabled, leading and trailing spaces are not highlighted if the are not embedded in escape sequences.
+=back
+
+If I<fill_up> is disabled, leading and trailing spaces are not highlighted if they are not embedded in escape sequences.
 
 =head1 REQUIREMENTS
 
