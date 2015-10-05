@@ -42,7 +42,7 @@ WriteMakefile(
         'Exporter'                => 0,
         'Parse::ANSIColor::Tiny'  => 0,
         'Term::ANSIColor'         => 0,
-        'Term::Choose'            => '1.206',
+        'Term::Choose'            => '1.207',
         'Term::Choose::Constants' => 0,
         'Text::ANSI::WideUtil'    => 0,
         'Unicode::GCString'       => 0,

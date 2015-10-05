@@ -1,6 +1,9 @@
 Revision history for Term::Choose_HAE
 
 
+0.021   2015-10-05
+        - Fixed: depends on module (Term::Choose::Constants) not on CPAN [RT #107535 - Alexandr Ciornii].
+
 0.020   2015-10-04
         - Update documentation.
 
