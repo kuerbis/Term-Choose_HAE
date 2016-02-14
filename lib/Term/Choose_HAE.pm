@@ -104,7 +104,7 @@ sub __wr_cell {
         if ( $col > 0 ) {
             for my $cl ( 0 .. $col - 1 ) {
                 my $i = $self->{rc2idx}[$row][$cl];
-                $lngth += $self->__print_columns( _strip_ansi_color( $self->{list}[$i] ) );
+                $lngth += $self->__print_columns( $self->{list}[$i] );
                 $lngth += $self->{pad_one_row};
             }
         }
@@ -114,7 +114,7 @@ sub __wr_cell {
         print REVERSE        if $is_current_pos;                # so Parse::ANSIColor::Tiny can take into account these highlightings
         select STDOUT;
         $str = $self->{list}[$idx];
-        $self->{i_col} += $self->__print_columns( _strip_ansi_color( $self->{list}[$idx] ) );
+        $self->{i_col} += $self->__print_columns( $self->{list}[$idx] );
     }
     else {
         $self->__goto( $row - $self->{row_on_top}, $col * $self->{col_width} );
