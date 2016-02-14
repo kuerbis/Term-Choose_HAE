@@ -1,6 +1,11 @@
 Revision history for Term::Choose_HAE
 
 
+0.021_01   2016-02-14
+        - Requires "Term::Choose::LineFold".
+        - Code refactoring.
+        - Update year copyright.
+
 0.021   2015-10-05
         - Fixed: depends on module (Term::Choose::Constants) not on CPAN [RT #107535 - Alexandr Ciornii].
 
