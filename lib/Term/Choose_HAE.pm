@@ -49,29 +49,24 @@ sub choose {
 
 sub __copy_orig_list {
     my ( $self ) = @_;
+    $self->{list} = [ @{$self->{orig_list}} ];
     if ( $self->{ll} ) {
-        $self->{list} = [ map {
-            my $copy = $_;
-            if ( ! $copy ) {
-                $copy = $self->{undef} if ! defined $copy;
-            }
-            $copy;
-        } @{$self->{orig_list}} ];
+        for ( @{$self->{list}} ) {
+            $_ = $self->{undef} if ! defined $_;
+        }
     }
     else {
-        $self->{list} = [ map {
-            my $copy = $_;
-            if ( ! $copy ) {
-                $copy = $self->{undef} if ! defined $copy;
-                $copy = $self->{empty} if $copy eq '';
+        for ( @{$self->{list}} ) {
+            if ( ! $_ ) {
+                $_ = $self->{undef} if ! defined $_;
+                $_ = $self->{empty} if $_ eq '';
             }
-            if ( ref $copy ) {
-                $copy = sprintf "%s(0x%x)", ref $copy, $copy;
+            if ( ref ) {
+                $_ = sprintf "%s(0x%x)", ref $_, $_;
             }
-            $copy =~ s/\p{Space}/ /g;               # replace, but don't squash sequences of spaces
-            $copy =~ s/\p{C}/$&=~m|\e| && $&/eg;    # remove \p{C} but keep \e
-            $copy;
-        } @{$self->{orig_list}} ];
+            s/\p{Space}/ /g;               # replace, but don't squash sequences of spaces
+            s/\p{C}/$&=~m|\e| && $&/eg;    # remove \p{C} but keep \e
+        }
     }
 }
 
