@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use 5.010001;
 
-our $VERSION = '0.021_01';
+our $VERSION = '0.021_02';
 use Exporter 'import';
 our @EXPORT_OK = qw( choose );
 
@@ -54,7 +54,6 @@ sub __copy_orig_list {
             my $copy = $_;
             if ( ! $copy ) {
                 $copy = $self->{undef} if ! defined $copy;
-                $copy = $self->{empty} if $copy eq '';
             }
             $copy;
         } @{$self->{orig_list}} ];
@@ -191,7 +190,7 @@ Term::Choose_HAE - Choose items from a list interactively.
 
 =head1 VERSION
 
-Version 0.021_01
+Version 0.021_02
 
 =cut
 
