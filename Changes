@@ -1,6 +1,9 @@
 Revision history for Term::Choose_HAE
 
 
+0.050   2016-02-21
+        - "Term::Choose": minimum version "1.500".
+
 0.021_02   2016-02-15
         - Sync "__copy_orig_list" with "Term::Choose".
 
